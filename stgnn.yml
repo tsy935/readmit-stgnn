@@ -5,13 +5,14 @@ channels:
   - defaults
   - dglteam
 dependencies:
-  - python=3.8.10
-  - pytorch=1.8.0
-  - scipy=1.7.3
-  - numpy=1.17.4
-  - matplotlib=3.1.2
-  - pandas=1.3.4
-  - scikit-learn=1.0.1
+  - python=3.8
+  - pytorch=1.8
+  - torchvision
+  - scipy
+  - numpy
+  - matplotlib
+  - pandas
+  - scikit-learn
   - pip
   - pip:
     - dgl-cuda11.1
@@ -19,3 +20,5 @@ dependencies:
     - graphviz
     - dotted-dict
     - networkx
+    - pydicom
+    - pypng

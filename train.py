@@ -17,6 +17,7 @@ from collections import OrderedDict, defaultdict
 from json import dumps
 from tqdm import tqdm
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from data.dataset import ReadmissionDataset
 from model.model import GraphRNN
 from model.fusion import JointFusionModel
 from dotted_dict import DottedDict
@@ -87,12 +88,7 @@ def evaluate(
 def main(args):
 
     args.cuda = torch.cuda.is_available()
-
-    if args.cuda:
-        torch.cuda.set_device(args.gpu_id)
-        device = "cuda:{}".format(args.gpu_id)
-    else:
-        device = "cpu"
+    device = "cuda" if args.cuda else "cpu"
 
     # set random seed
     utils.seed_torch(seed=args.rand_seed)
@@ -111,9 +107,28 @@ def main(args):
     logger.info("Args: {}".format(dumps(vars(args), indent=4, sort_keys=True)))
 
     # load graph
-    logger.info("Loading dataset...")
-    g = load_graphs(args.graph_dir)
-    g = g[0][0]
+    if args.graph_dir is not None:
+        logger.info("Loading graph...")
+        g = load_graphs(args.graph_dir)
+        g = g[0][0]
+    else:
+        logger.info("Constructing graph...")
+        dataset = ReadmissionDataset(
+            demo_file=args.demo_file,
+            edge_ehr_file=args.edge_ehr_file,
+            ehr_feature_file=args.ehr_feature_file,
+            edge_modality=args.edge_modality,
+            feature_type=args.feature_type,
+            img_feature_dir=args.img_feature_dir,
+            top_perc=args.edge_top_perc,
+            gauss_kernel=args.use_gauss_kernel,
+            max_seq_len_img=args.max_seq_len_img,
+            max_seq_len_ehr=args.max_seq_len_ehr,
+            sim_measure=args.sim_measure,
+            standardize=True,
+            ehr_types=args.ehr_types,
+        )
+        g = dataset[0]
 
     if args.feature_type != "multimodal":
         features = g.ndata[

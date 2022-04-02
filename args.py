@@ -49,81 +49,76 @@ def get_args():
         help="Number of patience epochs before early stopping.",
     )
 
-    # parser.add_argument(
-    #     "--edge_top_perc",
-    #     default=None,
-    #     type=float,
-    #     help="Top percentage edges to be kept.",
-    # )
-    # parser.add_argument(
-    #     "--use_gauss_kernel",
-    #     default=False,
-    #     type=str2bool,
-    #     help="Whether or not to use thresholded Gaussian kernel for edges",
-    # )
-    # parser.add_argument(
-    #     "--max_seq_len",
-    #     type=int,
-    #     default=3,
-    #     help="Maximum sequence lengt.",
-    # )
-    # parser.add_argument(
-    #     "--max_seq_len_img",
-    #     type=int,
-    #     default=3,
-    #     help="Maximum sequence length for images.",
-    # )
-    # parser.add_argument(
-    #     "--max_seq_len_ehr",
-    #     type=int,
-    #     default=8,
-    #     help="Maximum sequence length for ehr.",
-    # )
-    # parser.add_argument(
-    #     "--label_cutoff", type=int, default=7, help="Cutoff days for binary labels."
-    # )
-    # parser.add_argument(
-    #     "--dist_measure",
-    #     type=str,
-    #     default="euclidean",
-    #     choices=("cosine", "hamming", "euclidean", "correlation", "jaccard"),
-    #     help="Which distance measure? cosine, distance, or correlation.",
-    # )
-    # parser.add_argument(
-    #     "--img_by",
-    #     type=str,
-    #     default="cxr",
-    #     choices=("day", "cxr"),
-    #     help="Each time step is by one day or by one cxr.",
-    # )
+    # data args
+    parser.add_argument(
+        "--demo_file",
+        type=str,
+        help="Cohort file with demographics and imaging information.",
+    )
+    parser.add_argument(
+        "--edge_ehr_file", type=str, help="Preprocessed EHR features for edges."
+    )
+    parser.add_argument(
+        "--ehr_feature_file",
+        type=str,
+        help="Preprocessed EHR features for nodes features.",
+    )
+    parser.add_argument(
+        "--img_feature_dir", type=str, help="Dir to extracted CXR features."
+    )
+    parser.add_argument(
+        "--edge_top_perc",
+        default=None,
+        type=float,
+        help="Top percentage edges to be kept.",
+    )
+    parser.add_argument(
+        "--use_gauss_kernel",
+        default=False,
+        type=str2bool,
+        help="Whether or not to use thresholded Gaussian kernel for edges",
+    )
+    parser.add_argument(
+        "--max_seq_len_img",
+        type=int,
+        default=3,
+        help="Maximum sequence length for images.",
+    )
+    parser.add_argument(
+        "--max_seq_len_ehr",
+        type=int,
+        default=8,
+        help="Maximum sequence length for ehr.",
+    )
+    parser.add_argument(
+        "--sim_measure",
+        type=str,
+        default="euclidean",
+        choices=("cosine", "euclidean"),
+        help="Which similarity measure?",
+    )
 
-    # parser.add_argument(
-    #     "--edge_modality",
-    #     type=str,
-    #     nargs="+",
-    #     default=["demo", "cpt", "icd", "lab", "med"],
-    #     help="Modalities used for constructing edges.",
-    # )
+    parser.add_argument(
+        "--edge_modality",
+        type=str,
+        nargs="+",
+        default=["demo"],
+        help="Modalities used for constructing edges.",
+    )
 
     parser.add_argument(
         "--feature_type",
         default="imaging",
         choices=("imaging", "non-imaging", "multimodal"),
         type=str,
-        help="Options: imaging, pxs, cpt etc.",
+        help="Feature modality",
     )
-    # parser.add_argument(
-    #     "--ehr_types",
-    #     default=["demo", "cpt", "icd", "lab", "med"],
-    #     nargs="+",
-    #     type=str,
-    #     help="Types of EHR for node features.",
-    # )
     parser.add_argument(
-        "--standardize",
-        type=str2bool,
-        default=True,
-        help="Whether to standardize input to zero mean and unit variance.",
+        "--ehr_types",
+        default=["demo", "icd", "lab", "med"],
+        nargs="+",
+        type=str,
+        help="Sources of EHR for node features.",
     )
 
     # model args

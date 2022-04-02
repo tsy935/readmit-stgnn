@@ -341,7 +341,6 @@ class GraphRNN(nn.Module):
                 outputs_inner, dim=0
             )  # (seq_len, num_nodes, hidden_dim)
             if idx_gru != (self.num_gru_layers - 1):
-                #                 curr_inputs = self.dropout(curr_inputs)
                 curr_inputs = self.activation(self.dropout(curr_inputs))
         gru_out = curr_inputs  # (seq_len, num_nodes, hidden_dim)
 

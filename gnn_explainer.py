@@ -17,20 +17,20 @@ import math
 sys.path.append("../")
 from model.model import GraphRNN
 from model.fusion import JointFusionModel
+from data.dataset import ReadmissionDataset
 from utils import get_config
 import copy
 from tqdm import tqdm
 from sklearn.metrics import roc_curve
-import matplotlib.pylab as plt
 import torch as th
 import dgl
+from dgl.data.utils import load_graphs
 from dgl.sampling import sample_neighbors
 from dotted_dict import DottedDict
 import json
 import pandas as pd
 import argparse
-import wandb
-from constants import CATEGORICAL_DIMS, CATEGORICAL_IDXS
+import utils
 
 
 def extract_subgraph(graph, seed_nodes, hops=2):
@@ -190,7 +190,7 @@ class NodeExplainerModule(nn.Module):
         else:
 
             graph_copy.edata["weight"] = edge_mask
-        new_logits, _ = self.model([graph_copy], new_feats)
+        new_logits = self.model(graph_copy, new_feats)
 
         return new_logits
 
@@ -286,7 +286,7 @@ def gnn_explain(graph, feats, model, node_idx, feature_dim, args):
 
     # get trained model predictions
     model.eval()
-    model_logits, _ = model([sub_graph], sub_feats)
+    model_logits, _ = model(sub_graph, sub_feats)
     model_predict = (torch.sigmoid(model_logits) >= args.pred_thresh).long()
 
     # train explainer
@@ -309,8 +309,6 @@ def gnn_explain(graph, feats, model, node_idx, feature_dim, args):
             print("Early stopping at epoch {}...".format(epoch))
             break
         prev_loss = loss.item()
-
-        wandb.log({"loss": loss.item(), "epoch": epoch})
 
     return explainer, sub_graph, ori_n_idxes, new_n_idx
 
@@ -431,7 +429,7 @@ class NodeExplainerModule_JointFusion(nn.Module):
             graph_copy.edata["weight"] = graph_copy.edata["weight"] * edge_mask
         else:
             graph_copy.edata["weight"] = edge_mask
-        new_logits = self.model([graph_copy], new_img_feats, new_ehr_feats)
+        new_logits = self.model(graph_copy, new_img_feats, new_ehr_feats)
 
         return new_logits
 
@@ -549,7 +547,7 @@ def gnn_explain_fusion(
 
     # get trained model predictions
     model.eval()
-    model_logits = model([sub_graph], sub_img_feats, sub_ehr_feats)
+    model_logits = model(sub_graph, sub_img_feats, sub_ehr_feats)
     model_predict = (torch.sigmoid(model_logits) >= args.pred_thresh).long()
 
     # train explainer
@@ -572,8 +570,6 @@ def gnn_explain_fusion(
             break
         prev_loss = loss.item()
 
-        wandb.log({"loss": loss.item(), "epoch": epoch})
-
     return explainer, sub_graph, ori_n_idxes, new_n_idx
 
 
@@ -581,8 +577,44 @@ def gnn_explain_fusion(
 
 
 def main(params):
-    graph = load_graphs(params.graph_dir)
-    graph = g[0][0]
+    with open(os.path.join(params.model_dir, "args.json"), "r") as jf:
+        args = json.load(jf)
+    args = DottedDict(args)
+
+    print("Constructing graph...")
+    # dataset = ReadmissionDataset(
+    #     demo_file=args.demo_file,
+    #     edge_ehr_file=args.edge_ehr_file,
+    #     ehr_feature_file=args.ehr_feature_file,
+    #     edge_modality=args.edge_modality,
+    #     feature_type=args.feature_type,
+    #     img_feature_dir=args.img_feature_dir,
+    #     top_perc=args.edge_top_perc,
+    #     gauss_kernel=args.use_gauss_kernel,
+    #     max_seq_len_img=args.max_seq_len_img,
+    #     max_seq_len_ehr=args.max_seq_len_ehr,
+    #     sim_measure=args.sim_measure,
+    #     standardize=True,
+    #     ehr_types=args.ehr_types,
+    # )
+    dataset = ReadmissionDataset(
+        demo_file=args.demo_file,
+        edge_ehr_file=args.edge_ehr_files[0],
+        ehr_feature_file=args.ehr_feature_files[0],
+        edge_modality=args.edge_modality,
+        feature_type=args.feature_type,
+        img_feature_dir=args.img_feature_files[0],
+        top_perc=args.edge_top_perc,
+        gauss_kernel=args.use_gauss_kernel,
+        max_seq_len_img=args.max_seq_len_img,
+        max_seq_len_ehr=args.max_seq_len_ehr,
+        sim_measure=args.dist_measure,
+        standardize=True,
+        ehr_types=args.ehr_types,
+    )
+    graph = dataset[0]
+    cat_idxs = dataset.cat_idxs
+    cat_dims = dataset.cat_dims
 
     if params.modality == "fusion":
         ehr_feats = graph.ndata["ehr_feat"]
@@ -597,8 +629,8 @@ def main(params):
             ehr_in_dim=ehr_in_dim,
             img_config=img_config,
             ehr_config=ehr_config,
-            cat_idxs=CATEGORICAL_IDXS,
-            cat_dims=CATEGORICAL_DIMS,
+            cat_idxs=cat_idxs,
+            cat_dims=cat_dims,
             ehr_encoder_name=args.ehr_encoder_name,
             cat_emb_dim=args.cat_emb_dim,
             joint_hidden=args.joint_hidden,
@@ -619,12 +651,26 @@ def main(params):
             if args.feature_type != "imaging"
             else None,
             ehr_config=None,
-            cat_idxs=CATEGORICAL_IDXS,
-            cat_dims=CATEGORICAL_DIMS,
+            cat_idxs=cat_idxs,
+            cat_dims=cat_dims,
             cat_emb_dim=args.cat_emb_dim,
             **config
         )
-    model = utils.load_model_checkpoint(params.checkpoint_file, model)
+    model = utils.load_model_checkpoint(
+        os.path.join(params.model_dir, "best.pth.tar"), model
+    )
+
+    # load test results
+    with open(os.path.join(params.model_dir, "test_predictions.pkl"), "rb") as pf:
+        test_results = pickle.load(pf)
+
+    test_labels = test_results["labels"]
+    test_proba = test_results["probs"]
+
+    # Get optimal operating point based on Yanden J statistic
+    fpr, tpr, thresholds = roc_curve(test_labels, test_proba)
+    optimal_idx = np.argmax(tpr - fpr)
+    optimal_thresh = thresholds[optimal_idx]
 
     node_idx = torch.tensor([params.node_to_explain]).type(torch.int32)
     args_explainer = {
@@ -676,13 +722,13 @@ def main(params):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GNN Explainer for STGNN/MM-STGNN.")
     parser.add_argument(
-        "--graph_dir", type=str, default=None, help="Dir to preprocessed graph."
-    )
-    parser.add_argument(
-        "--checkpoint_file",
+        "--model_dir",
         type=str,
         default=None,
-        help="Trained model checkpoint file.",
+        help="Dir to trained model checkpoints.",
+    )
+    parser.add_argument(
+        "--node_to_explain", type=int, default=0, help="Node ID for explanation."
     )
     parser.add_argument(
         "--modality",

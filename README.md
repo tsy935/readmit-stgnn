@@ -30,6 +30,7 @@ To preprocess EHR features, run the following on terminal:
 ```
 python ehr/preprocess_ehr.py --demo_file <preproc-save-dir>/mimic_admission_demo.csv --icd_file <preproc-save-dir>/mimic_hosp_icd_subgroups.csv --lab_file <preproc-save-dir>/mimic_hosp_lab_filtered.csv --med_file <preproc-save-dir>/mimic_hosp_med_filtered.csv --save_dir <ehr-feature-dir>
 ```
+where `<ehr-feature-dir>` is where the preprocessed EHR features will be saved. 
 
 #### Preprocessing Imaging Features
 To extract imaging features from DenseNet121 pretrained using MoCo self-supervised pretraining protocol on CheXpert data, please download the pretrained model [checkpoint](https://storage.googleapis.com/moco-cxr/d1w-00001.pth.tar) provided in the MoCo-CXR [repository](https://github.com/stanfordmlgroup/MoCo-CXR).

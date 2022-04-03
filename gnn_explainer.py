@@ -13,8 +13,6 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-
-sys.path.append("../")
 from model.model import GraphRNN
 from model.fusion import JointFusionModel
 from data.dataset import ReadmissionDataset
@@ -582,33 +580,18 @@ def main(params):
     args = DottedDict(args)
 
     print("Constructing graph...")
-    # dataset = ReadmissionDataset(
-    #     demo_file=args.demo_file,
-    #     edge_ehr_file=args.edge_ehr_file,
-    #     ehr_feature_file=args.ehr_feature_file,
-    #     edge_modality=args.edge_modality,
-    #     feature_type=args.feature_type,
-    #     img_feature_dir=args.img_feature_dir,
-    #     top_perc=args.edge_top_perc,
-    #     gauss_kernel=args.use_gauss_kernel,
-    #     max_seq_len_img=args.max_seq_len_img,
-    #     max_seq_len_ehr=args.max_seq_len_ehr,
-    #     sim_measure=args.sim_measure,
-    #     standardize=True,
-    #     ehr_types=args.ehr_types,
-    # )
     dataset = ReadmissionDataset(
         demo_file=args.demo_file,
-        edge_ehr_file=args.edge_ehr_files[0],
-        ehr_feature_file=args.ehr_feature_files[0],
+        edge_ehr_file=args.edge_ehr_file,
+        ehr_feature_file=args.ehr_feature_file,
         edge_modality=args.edge_modality,
         feature_type=args.feature_type,
-        img_feature_dir=args.img_feature_files[0],
+        img_feature_dir=args.img_feature_dir,
         top_perc=args.edge_top_perc,
         gauss_kernel=args.use_gauss_kernel,
         max_seq_len_img=args.max_seq_len_img,
         max_seq_len_ehr=args.max_seq_len_ehr,
-        sim_measure=args.dist_measure,
+        sim_measure=args.sim_measure,
         standardize=True,
         ehr_types=args.ehr_types,
     )

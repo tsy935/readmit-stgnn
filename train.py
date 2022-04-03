@@ -21,7 +21,6 @@ from data.dataset import ReadmissionDataset
 from model.model import GraphRNN
 from model.fusion import JointFusionModel
 from dotted_dict import DottedDict
-from constants import CATEGORICAL_DIMS, CATEGORICAL_IDXS
 
 
 def evaluate(
@@ -42,7 +41,7 @@ def evaluate(
     with torch.no_grad():
         if "fusion" in args.model_name:
             logits = model(graph, img_features, ehr_features)
-        elif args.model_name != "stgcn":
+        elif args.model_name != "stgnn":
             assert len(graph) == 1
             features_avg = features[:, -1, :]
             logits, _ = model(graph[0], features_avg)
@@ -107,28 +106,25 @@ def main(args):
     logger.info("Args: {}".format(dumps(vars(args), indent=4, sort_keys=True)))
 
     # load graph
-    if args.graph_dir is not None:
-        logger.info("Loading graph...")
-        g = load_graphs(args.graph_dir)
-        g = g[0][0]
-    else:
-        logger.info("Constructing graph...")
-        dataset = ReadmissionDataset(
-            demo_file=args.demo_file,
-            edge_ehr_file=args.edge_ehr_file,
-            ehr_feature_file=args.ehr_feature_file,
-            edge_modality=args.edge_modality,
-            feature_type=args.feature_type,
-            img_feature_dir=args.img_feature_dir,
-            top_perc=args.edge_top_perc,
-            gauss_kernel=args.use_gauss_kernel,
-            max_seq_len_img=args.max_seq_len_img,
-            max_seq_len_ehr=args.max_seq_len_ehr,
-            sim_measure=args.sim_measure,
-            standardize=True,
-            ehr_types=args.ehr_types,
-        )
-        g = dataset[0]
+    logger.info("Constructing graph...")
+    dataset = ReadmissionDataset(
+        demo_file=args.demo_file,
+        edge_ehr_file=args.edge_ehr_file,
+        ehr_feature_file=args.ehr_feature_file,
+        edge_modality=args.edge_modality,
+        feature_type=args.feature_type,
+        img_feature_dir=args.img_feature_dir,
+        top_perc=args.edge_top_perc,
+        gauss_kernel=args.use_gauss_kernel,
+        max_seq_len_img=args.max_seq_len_img,
+        max_seq_len_ehr=args.max_seq_len_ehr,
+        sim_measure=args.sim_measure,
+        standardize=True,
+        ehr_types=args.ehr_types,
+    )
+    g = dataset[0]
+    cat_idxs = dataset.cat_idxs
+    cat_dims = dataset.cat_dims
 
     if args.feature_type != "multimodal":
         features = g.ndata[
@@ -136,14 +132,10 @@ def main(args):
         ]  # features for each graph are the same, including temporal info
         img_features = None
         ehr_features = None
-        cat_idxs = CATEGORICAL_IDXS
-        cat_dims = CATEGORICAL_DIMS
     else:
         img_features = g.ndata["img_feat"]
         ehr_features = g.ndata["ehr_feat"]
         features = None
-        cat_idxs = CATEGORICAL_IDXS
-        cat_dims = CATEGORICAL_DIMS
     labels = g.ndata["label"]  # labels are the same
     train_mask = g.ndata["train_mask"]
     val_mask = g.ndata["val_mask"]
@@ -205,7 +197,7 @@ def main(args):
         test_mask = test_mask.to(device)
         g = g.int().to(device)
 
-    if args.model_name == "stgcn":
+    if args.model_name == "stgnn":
         in_dim = features.shape[-1]
         print("Input dim:", in_dim)
         config = utils.get_config(args.model_name, args)
@@ -222,8 +214,8 @@ def main(args):
         )
 
     elif args.model_name == "joint_fusion":
-        img_config = utils.get_config("stgcn", args)
-        ehr_config = utils.get_config("stgcn", args)
+        img_config = utils.get_config("stgnn", args)
+        ehr_config = utils.get_config("stgnn", args)
         img_in_dim = img_features.shape[-1]
         ehr_in_dim = ehr_features.shape[-1]
         model = JointFusionModel(
@@ -307,7 +299,7 @@ def main(args):
             # if no temporal dim
             if "fusion" in args.model_name:
                 logits = model(g, img_features, ehr_features)
-            elif args.model_name != "stgcn":
+            elif args.model_name != "stgnn":
                 assert len(g) == 1
                 features_avg = features[:, -1, :]
                 logits, _ = model(g, features_avg)

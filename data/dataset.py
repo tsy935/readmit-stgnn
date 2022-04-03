@@ -495,6 +495,7 @@ class ReadmissionDataset(DGLDataset):
             raise NotImplementedError
 
         print("Edge modality:", edge_modality)
+        print("EHR types:", ehr_types)
 
         # get patients
         self.df_all = pd.read_csv(demo_file)

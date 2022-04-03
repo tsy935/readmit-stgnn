@@ -275,14 +275,11 @@ def compute_edges(
         dist = np.array(dist_dict["Distance"])
 
     # sanity check shape, (num_nodes) * (num_nodes + 1) / 2, if consider self-edges
-    print("dist shape:", dist.shape)
-
     assert len(dist) == (len(node_names) * (len(node_names) + 1) / 2)
 
     # apply gaussian kernel, use cosine distance instead of cosine similarity
     if gauss_kernel or (cos_sim is None):
         std = dist.std()
-        print("dist std:", std)
         edges = np.exp(-np.square(dist / std))
     else:
         edges = cos_sim
@@ -295,7 +292,6 @@ def compute_edges(
         thresh = sorted_dist[:num_to_keep][-1]
         mask = edges >= thresh
         mask[edges < 0] = 0  # no edge for negative "distance"
-        print("Number of non-zero edges:", np.sum(mask))
         edges = edges * mask
 
     return edges

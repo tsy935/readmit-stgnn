@@ -360,7 +360,7 @@ def set_parameter_requires_grad(model, feature_extracting):
 
 
 def get_config(model_name, args):
-    if model_name == "stgcn":
+    if model_name == "stgnn":
         config = {
             "hidden_dim": args.hidden_dim,
             "num_gcn_layers": args.num_gcn_layers,

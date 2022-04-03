@@ -21,9 +21,6 @@ def get_args():
         help="Directory to save the outputs and checkpoints.",
     )
     parser.add_argument(
-        "--graph_dir", type=str, default=None, help="Dir to preprocessed graph."
-    )
-    parser.add_argument(
         "--load_model_path",
         type=str,
         default=None,
@@ -81,13 +78,13 @@ def get_args():
     parser.add_argument(
         "--max_seq_len_img",
         type=int,
-        default=3,
+        default=9,
         help="Maximum sequence length for images.",
     )
     parser.add_argument(
         "--max_seq_len_ehr",
         type=int,
-        default=8,
+        default=9,
         help="Maximum sequence length for ehr.",
     )
     parser.add_argument(
@@ -125,9 +122,9 @@ def get_args():
     parser.add_argument(
         "--model_name",
         type=str,
-        default="stgcn",
+        default="stgnn",
         choices=(
-            "stgcn",
+            "stgnn",
             "graphsage",
             "joint_fusion",
         ),

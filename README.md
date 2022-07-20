@@ -48,6 +48,13 @@ python cxr/dicom2png.py --DICOMHome <dicom-data-dir> --OutputDirectory <png-save
 ```
 where `<dicom-data-dir>` is the directory of folders with DICOM files and `<png-save-dir>` is the directory to save converted PNG files.
 
+#### Unseen test set (Optional)
+Our problem setup is based on settings of semisupervised node classification. This means that all of the train/validation/test nodes' features are available to the model during training, while only the training nodes' labels are available to the model at training time. However, in real-world scenarios, we often want to predict an unseen patient's (i.e., unseen node) readmission risk, which means that the model does not have access to the unseen node's features at training time. 
+
+Here, we simulate this scenario by splitting the original test set into half. The following command will create two files, where the first file contains train, validation, and half of the original test patients (saved to `<preproc-save-dr>/mimic_admission_demo_half_test.csv`) and can be used to train a model, the second file contains the train, validation, and the other half of the original test patients (saved to `<preproc-save-dr>/mimic_admission_demo_unseen_test.csv`) and can be used to evaluate the model.
+```
+python ehr/split_test_set.py --demo_file <preproc-save-dir>/mimic_admission_demo.csv --save_dir <preproc-save-dir>
+```
 
 ## Models
 The following commands reproduce the results on MIMIC-IV in the paper.
@@ -74,7 +81,19 @@ where `<save-dir>` is the directory to save model checkpoints, and `<preproc-sav
     --hidden_dim 256 --num_gcn_layers 1 --num_rnn_layers 1 --add_bias True --g_conv graphsage --aggregator_type mean --num_classes 1 --dropout 0.2 --activation_fn elu --metric_name auroc --lr 3e-3 \
     --l2_wd 5e-4 --patience 10 --pos_weight 4 --num_epochs 100 --final_pool last --model_name 'stgnn' --t_model 'gru' --ehr_encoder_name 'embedder' --cat_emb_dim 3
 
-To directly evaluate a trained model, specify `--do_train False --load_model_path <model-checkpoint-dir>`.
+### Model Evaluation on Full Cohort
+To directly evaluate a trained model, keep other args the same, and specify `--do_train False --load_model_path <model-checkpoint-file>`. For example:
+
+    python train.py --save_dir <save-dir> --demo_file <preproc-save-dir>/mimic_admission_demo.csv --edge_modality 'demo' --feature_type 'multimodal' --ehr_feature_file <ehr-feature-dir>/ehr_preprocessed_seq_by_day_cat_embedding.pkl \
+    --edge_ehr_file <ehr-feature-dir>/ehr_preprocessed_seq_by_day_one_hot.pkl --img_feature_dir <cxr-feature-dir> --ehr_types 'demo' 'icd' 'lab' 'med' --edge_top_perc 0.01 --sim_measure 'euclidean' --use_gauss_kernel True \
+    --max_seq_len_img 9 --max_seq_len_ehr 9 --hidden_dim 256 --joint_hidden 128 --num_gcn_layers 1 --num_rnn_layers 1 --add_bias True --g_conv graphsage --aggregator_type mean --num_classes 1 --dropout 0.2 --activation_fn elu \
+    --metric_name auroc --lr 3e-3 --l2_wd 5e-4 --patience 10 --pos_weight 4 --num_epochs 100 --final_pool last --model_name 'joint_fusion' --t_model 'gru' --ehr_encoder_name 'embedder' --cat_emb_dim 3 \
+    --do_train False --load_model_path <model-checkpoint-file>
+
+### Model Evaluation on Unseen Patients
+In order to evaluate the model on unseen patients, the model should not see the unseen patients' features during training. First, train the model by specifying a different cohort csv file that does not contain the unseen patients, e.g.,  `--demo_file <preproc-save-dir>/mimic_admission_demo_half_test.csv`. Once the model training is done, evaluate the model on the unseen patients by specifying `--demo_file <preproc-save-dir>/mimic_admission_demo_unseen_test.csv --do_train False --load_model_path <model-checkpoint-file>`.
+
+If you would like to use a trained model to provide predictions on your own data, you may create a new csv file by appending your data to the bottom of the cohort file used to train the model (e.g., `<preproc-save-dir>/mimic_admission_demo.csv`), and make sure to specify `test` in the  `splits` column. In this way, the dataloader will include this additional datapoint as a **new** node in the graph and the model predictions will include this node.
 
 ## GNNExplainer
 To explain a node's prediction by MM-STGNN using [GNNExplainer](https://arxiv.org/pdf/1903.03894.pdf), run the following:
